@@ -1,0 +1,198 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   ۱. استایل‌های پایه بدنه و اسکرول‌بار (Dark Shell)
+   ========================================================================== */
+:root {
+  color-scheme: dark;
+}
+
+html {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #17151C;
+  color: #F3F4F6;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* اسکرول‌بار اختصاصی و شیک مطابق با تم دارک */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #17151C;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2D2838;
+  border-radius: 9999px;
+  border: 2px solid #17151C;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #433C53;
+}
+
+/* ==========================================================================
+   ۲. پوسته اصلی داشبورد و جلوه‌های پس‌زمینه (Dashboard Shell)
+   ========================================================================== */
+.dashboard-shell {
+  position: relative;
+  isolation: isolate;
+  background-color: #17151C;
+}
+
+/* ==========================================================================
+   ۳. هدر شیشه‌ای اختصاصی (بدون هیچ ترنسفرم تا متن کریستالی و شارپ بماند)
+   ========================================================================== */
+.glass-header {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 60%,
+    rgba(255, 255, 255, 0.05) 100%
+  ) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(24px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 12px 30px -5px rgba(0, 0, 0, 0.45) !important;
+  
+  /* ضد مات‌شدگی در موتور رندرینگ کرومیوم */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: none !important;
+}
+
+/* خط نور ملایم بالای هدر */
+.glass-header::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 5%;
+  left: 5%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   ۴. پنل‌های شیشه‌ای عمومی و کارت‌های بدون هاور (Glass Panel)
+   ========================================================================== */
+.glass-panel {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.09),
+    rgba(255, 255, 255, 0.03) 50%,
+    rgba(255, 255, 255, 0.05)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 14px 35px rgba(0, 0, 0, 0.25);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.glass-panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 5%;
+  left: 5%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.25),
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   ۵. کارت‌های گرید تعاملی ۳ بعدی (ویجت‌های KPI، چارت‌ها و جداول)
+   ========================================================================== */
+.glass-card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 60%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  transition:
+    transform 0.3s cubic-bezier(0.2, 0, 0.2, 1),
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+  will-change: transform;
+}
+
+/* افکت جهش سه‌بعدی نرم فقط برای کارت‌ها */
+.glass-card:hover {
+  transform: perspective(1000px) translateY(-5px) scale(1.006);
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 20px 40px -10px rgba(0, 0, 0, 0.55),
+    0 0 25px rgba(139, 92, 246, 0.15);
+}
+
+.glass-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 8%;
+  left: 8%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.25),
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   ۶. سازگاری برای مرورگرهای قدیمی فاقد Backdrop-filter
+   ========================================================================== */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-header,
+  .glass-panel,
+  .glass-card {
+    background: #231F2D !important;
+  }
+}
