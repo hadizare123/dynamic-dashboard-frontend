@@ -36,8 +36,9 @@
 
         <!-- لینک‌های منو -->
         <nav class="space-y-2">
+          <!-- منوهای عادی -->
           <router-link
-            v-for="item in menuItems"
+            v-for="item in mainMenuItems"
             :key="item.to"
             :to="item.to"
             :title="isCollapsed ? item.label : ''"
@@ -52,6 +53,55 @@
             <span class="text-lg shrink-0">{{ item.icon }}</span>
             <span v-if="!isCollapsed" class="whitespace-nowrap">{{ item.label }}</span>
           </router-link>
+
+          <!-- منوی والد: تنظیمات و زیرمجموعه‌ها -->
+          <div class="space-y-1">
+            <button
+              @click="toggleSettings"
+              :title="isCollapsed ? 'تنظیمات' : ''"
+              :class="[
+                'w-full flex items-center justify-between rounded-xl transition',
+                isCollapsed ? 'justify-center px-0 py-3' : 'px-4 py-3',
+                isSettingsActive ? 'bg-blue-600/20 text-blue-400 font-medium border border-blue-500/30' : 'text-gray-300 hover:bg-gray-800/70 hover:text-white border border-transparent'
+              ]"
+            >
+              <div class="flex items-center gap-3">
+                <span class="text-lg shrink-0">⚙️</span>
+                <span v-if="!isCollapsed" class="whitespace-nowrap">تنظیمات</span>
+              </div>
+              <span v-if="!isCollapsed" class="text-xs transition-transform duration-200" :class="{ 'rotate-180': settingsOpen }">
+                ▼
+              </span>
+            </button>
+
+            <!-- زیرمجموعه‌های تنظیمات -->
+            <div v-show="settingsOpen && !isCollapsed" class="pr-4 space-y-1 border-r border-gray-800 mr-4">
+              <router-link
+                to="/dashboard/settings"
+                :class="[
+                  'block px-3 py-2 rounded-lg text-sm transition',
+                  isActive('/dashboard/settings') ? 'text-blue-400 font-medium bg-blue-600/10' : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                ]"
+              >
+                ساخت کوئری
+              </router-link>
+              <router-link
+                to="/admin/widget-settings"
+                :class="[
+                  'block px-3 py-2 rounded-lg text-sm transition',
+                  isActive('/admin/widget-settings') ? 'text-blue-400 font-medium bg-blue-600/10' : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                ]"
+              >
+                ساخت ویجت
+              </router-link>
+
+              <router-link to="/admin/dashboard-create" class="block p-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg">
+               ساخت داشبورد
+               </router-link>
+
+              
+            </div>
+          </div>
         </nav>
       </div>
 
@@ -116,12 +166,17 @@ import { useRoute } from 'vue-router'
 
 const route = useRoute()
 const isCollapsed = ref(false)
+const settingsOpen = ref(true)
 
-const menuItems = [
+const mainMenuItems = [
   { to: '/main', icon: '📊', label: 'صفحه اصلی' },
-  { to: '/dashboard/1', icon: '📈', label: 'داشبورد مدیریتی' },
-   { to: '/dashboard/settings', icon: '⚙️', label: 'تنظیمات' }
+  { to: '/dashboard/1', icon: '📈', label: 'داشبورد مدیریتی' }
 ]
 
 const isActive = (path) => route.path === path
+const isSettingsActive = computed(() => route.path === '/dashboard/settings' || route.path === '/admin/widget-settings')
+
+const toggleSettings = () => {
+  settingsOpen.value = !settingsOpen.value
+}
 </script>

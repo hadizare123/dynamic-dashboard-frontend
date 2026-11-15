@@ -22,7 +22,19 @@ const routes = [
     path: '/dashboard/:id',
     name: 'dashboard',
     component: () => import('../views/DashboardView.vue')
-  }
+  },
+  {
+  path: '/admin/widget-settings',
+  name: 'WidgetSettings',
+  component: () => import('../views/WidgetSettingsView.vue'),
+  meta: { requiresAuth: true }
+},
+{
+  path: '/admin/dashboard-create',
+  name: 'dashboard-create',
+  component: () => import('../views/DashboardCreateView.vue')
+}
+
 ]
 
 const router = createRouter({

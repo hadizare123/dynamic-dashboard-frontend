@@ -1,4 +1,6 @@
-const BASE_URL = 'http://localhost:8081/api'
+const BASE_URL = 'http://127.0.0.1:8000'
+
+
 
 export async function fetchDashboard(dashboardId) {
   try {

@@ -8,134 +8,141 @@ const saving = ref(false)
 const error = ref('')
 const message = ref('')
 
-// ✅ وضعیت باز/بسته بودن پنل فرم
-const isFormOpen = ref(true)
+const is_form_open = ref(true)
+const editing_id = ref(null)
+const is_editing = computed(() => editing_id.value !== null)
 
-// ✅ شناسه کوئری در حال ویرایش (null = حالت ثبت جدید)
-const editingId = ref(null)
-const isEditing = computed(() => editingId.value !== null)
-
-const emptyForm = () => ({
-  sourceId: null,
-  reportTitle: '',
+const empty_form = () => ({
+  source_id: null,
+  category_id: null,
+  report_title: '',
   description: '',
-  sqlText: '',
-  chartType: 'TABLE',
-  isActive: true
+  sql_text: '',
+  chart_type: 'TABLE',
+  is_active: true
 })
 
-const form = reactive(emptyForm())
+const form = reactive(empty_form())
 
-async function check(response) {
+async function check_response(response) {
   if (!response.ok) {
-    if (response.status === 403) throw new Error('دسترسی غیرمجاز (خطای امنیتی یا CSRF)')
-    const errText = await response.text().catch(() => '')
-    throw new Error(`خطای HTTP ${response.status}${errText ? ' - ' + errText : ''}`)
+    if (response.status === 403) {
+      throw new Error('دسترسی غیرمجاز (خطای امنیتی یا CSRF)')
+    }
+    const error_text = await response.text().catch(() => '')
+    throw new Error(
+      `خطای HTTP ${response.status}${error_text ? ` - ${error_text}` : ''}`
+    )
   }
   const text = await response.text()
   return text ? JSON.parse(text) : {}
 }
 
-async function load() {
+async function load_data() {
   loading.value = true
   error.value = ''
   try {
-    const [sourcesResponse, queriesResponse] = await Promise.all([
-      fetch('/api/admin/dashboard/queries/sources', { credentials: 'same-origin' }),
-      fetch('/api/admin/dashboard/queries', { credentials: 'same-origin' })
+    const [sources_response, queries_response] = await Promise.all([
+      fetch('/api/admin/dashboard/queries/sources', {
+        credentials: 'same-origin'
+      }),
+      fetch('/api/admin/dashboard/queries', {
+        credentials: 'same-origin'
+      })
     ])
 
-    sources.value = await check(sourcesResponse)
-    queries.value = await check(queriesResponse)
-  } catch (e) {
-    error.value = `بارگذاری تنظیمات ناموفق بود: ${e.message}`
+    sources.value = await check_response(sources_response)
+    queries.value = await check_response(queries_response)
+  } catch (exception) {
+    error.value = `بارگذاری تنظیمات ناموفق بود: ${exception.message}`
   } finally {
     loading.value = false
   }
 }
 
-// ✅ باز/بسته کردن پنل فرم
-function toggleForm() {
-  isFormOpen.value = !isFormOpen.value
+function toggle_form() {
+  is_form_open.value = !is_form_open.value
 }
 
-// ✅ شروع ویرایش یک کوئری
-function startEdit(query) {
-  editingId.value = query.queryId
-  form.sourceId = query.sourceId ?? null
-  form.reportTitle = query.reportTitle ?? ''
+function start_edit(query) {
+  editing_id.value = query.query_id
+  form.source_id = query.source_id ?? null
+  form.category_id = query.category_id ?? null
+  form.report_title = query.report_title ?? ''
   form.description = query.description ?? ''
-  form.sqlText = query.sqlText ?? ''
-  form.chartType = query.chartType ?? 'TABLE'
-  form.isActive = query.isActive ?? true
+  form.sql_text = query.sql_text ?? ''
+  form.chart_type = query.chart_type ?? 'TABLE'
+  form.is_active = query.is_active ?? true
 
   error.value = ''
   message.value = ''
-  isFormOpen.value = true   // پنل را باز کن
+  is_form_open.value = true
 }
 
-// ✅ لغو ویرایش و بازگشت به حالت ثبت جدید
-function cancelEdit() {
-  editingId.value = null
-  Object.assign(form, emptyForm())
+function cancel_edit() {
+  editing_id.value = null
+  Object.assign(form, empty_form())
   error.value = ''
   message.value = ''
 }
 
-async function save() {
+async function save_query() {
   error.value = ''
   message.value = ''
 
-  // ✅ اعتبارسنجی فارسی فیلدهای اجباری
-  if (!form.reportTitle || !form.reportTitle.trim()) {
+  if (!form.report_title || !form.report_title.trim()) {
     error.value = 'لطفاً عنوان گزارش را وارد کنید.'
     return
   }
-  if (!form.sourceId) {
+  if (!form.source_id) {
     error.value = 'لطفاً منبع داده را انتخاب کنید.'
     return
   }
-  if (!form.sqlText || !form.sqlText.trim()) {
+  if (!form.sql_text || !form.sql_text.trim()) {
     error.value = 'لطفاً متن SQL را وارد کنید.'
     return
   }
 
   saving.value = true
-  const isUpdate = isEditing.value
+  const is_update = is_editing.value
 
   try {
-    const url = isUpdate
-      ? `http://localhost:8081/api/admin/dashboard/queries/${editingId.value}`
-      : 'http://localhost:8081/api/admin/dashboard/queries'
+    const url = is_update
+      ? `/api/admin/dashboard/queries/${editing_id.value}`
+      : '/api/admin/dashboard/queries'
 
     const response = await fetch(url, {
-      method: isUpdate ? 'PUT' : 'POST',
+      method: is_update ? 'PUT' : 'POST',
       credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({
-        sourceId: form.sourceId,
-        categoryId: null,
-        reportTitle: form.reportTitle,
+        source_id: form.source_id,
+        category_id: form.category_id,
+        report_title: form.report_title,
         description: form.description,
-        sqlText: form.sqlText,
-        chartType: form.chartType,
-        isActive: form.isActive
+        sql_text: form.sql_text,
+        chart_type: form.chart_type,
+        is_active: form.is_active
       })
     })
 
-    await check(response)
-    editingId.value = null
-    Object.assign(form, emptyForm())
-    message.value = isUpdate ? 'کوئری با موفقیت ویرایش شد.' : 'کوئری با موفقیت ثبت شد.'
-    await load()
-  } catch (e) {
-    error.value = `${isUpdate ? 'ویرایش' : 'ثبت'} کوئری ناموفق بود: ${e.message}`
+    await check_response(response)
+    editing_id.value = null
+    Object.assign(form, empty_form())
+    message.value = is_update
+      ? 'کوئری با موفقیت ویرایش شد.'
+      : 'کوئری با موفقیت ثبت شد.'
+    await load_data()
+  } catch (exception) {
+    error.value = `${is_update ? 'ویرایش' : 'ثبت'} کوئری ناموفق بود: ${exception.message}`
   } finally {
     saving.value = false
   }
 }
 
-onMounted(load)
+onMounted(load_data)
 </script>
 
 <template>
@@ -165,12 +172,12 @@ onMounted(load)
         {{ message }}
       </p>
 
-      <!-- ✅ پنل فرم جمع‌شونده -->
+      <!-- پنل فرم جمع‌شونده -->
       <section class="rounded-2xl border border-white/15 bg-[#211e28]/95 shadow-2xl shadow-black/20">
         <button
           type="button"
           class="flex w-full items-center justify-between gap-3 px-5 py-4 text-right sm:px-8"
-          @click="toggleForm"
+          @click="toggle_form"
         >
           <span class="flex items-center gap-3">
             <span
@@ -178,7 +185,7 @@ onMounted(load)
             >
               <svg
                 class="h-5 w-5 transition-transform duration-200"
-                :class="isFormOpen ? 'rotate-180' : ''"
+                :class="is_form_open ? 'rotate-180' : ''"
                 viewBox="0 0 20 20"
                 fill="currentColor"
               >
@@ -191,24 +198,23 @@ onMounted(load)
             </span>
             <span>
               <span class="block text-lg font-bold text-white">
-                {{ isEditing ? `ویرایش کوئری #${editingId}` : 'ثبت کوئری جدید' }}
+                {{ is_editing ? `ویرایش کوئری #${editing_id}` : 'ثبت کوئری جدید' }}
               </span>
               <span class="mt-0.5 block text-sm text-gray-400">
-                {{ isFormOpen ? 'برای بستن کلیک کنید' : 'برای باز کردن کلیک کنید' }}
+                {{ is_form_open ? 'برای بستن کلیک کنید' : 'برای باز کردن کلیک کنید' }}
               </span>
             </span>
           </span>
         </button>
 
-        <!-- محتوای فرم: با v-show تا مقادیر حفظ شوند -->
-        <div v-show="isFormOpen" class="border-t border-white/10 px-5 pb-6 pt-5 sm:px-8">
-          <form class="space-y-6" @submit.prevent="save">
+        <div v-show="is_form_open" class="border-t border-white/10 px-5 pb-6 pt-5 sm:px-8">
+          <form class="space-y-6" @submit.prevent="save_query">
             <label class="block space-y-2">
               <span class="block text-sm font-semibold text-gray-100">
                 عنوان گزارش <span class="text-rose-400">*</span>
               </span>
               <input
-                v-model.trim="form.reportTitle"
+                v-model.trim="form.report_title"
                 maxlength="255"
                 placeholder="مثلاً: فروش ماهانه"
                 class="form-control"
@@ -219,14 +225,14 @@ onMounted(load)
               <span class="block text-sm font-semibold text-gray-100">
                 منبع داده <span class="text-rose-400">*</span>
               </span>
-              <select v-model="form.sourceId" class="form-control">
+              <select v-model="form.source_id" class="form-control">
                 <option :value="null" disabled>انتخاب منبع داده...</option>
                 <option
                   v-for="source in sources"
-                  :key="source.sourceId"
-                  :value="source.sourceId"
+                  :key="source.source_id"
+                  :value="source.source_id"
                 >
-                  {{ source.displayName }} ({{ source.sourceKey }})
+                  {{ source.display_name }} ({{ source.source_key }})
                 </option>
               </select>
             </label>
@@ -235,7 +241,7 @@ onMounted(load)
               <span class="block text-sm font-semibold text-gray-100">
                 نوع نمایش <span class="text-rose-400">*</span>
               </span>
-              <select v-model="form.chartType" class="form-control">
+              <select v-model="form.chart_type" class="form-control">
                 <option value="TABLE">جدول</option>
                 <option value="CHART_BAR">نمودار میله‌ای</option>
                 <option value="CHART_LINE">نمودار خطی</option>
@@ -258,7 +264,7 @@ onMounted(load)
                 متن SQL <span class="text-rose-400">*</span>
               </span>
               <textarea
-                v-model="form.sqlText"
+                v-model="form.sql_text"
                 rows="8"
                 dir="ltr"
                 placeholder="SELECT ..."
@@ -269,7 +275,7 @@ onMounted(load)
             <label
               class="flex w-fit cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-medium text-gray-100 transition hover:bg-white/[0.07]"
             >
-              <input v-model="form.isActive" type="checkbox" class="h-4 w-4 accent-emerald-500" />
+              <input v-model="form.is_active" type="checkbox" class="h-4 w-4 accent-emerald-500" />
               فعال باشد
             </label>
 
@@ -279,14 +285,14 @@ onMounted(load)
                 :disabled="saving"
                 class="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-300/60 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {{ saving ? 'در حال ذخیره...' : isEditing ? 'ذخیره تغییرات' : 'ثبت کوئری' }}
+                {{ saving ? 'در حال ذخیره...' : is_editing ? 'ذخیره تغییرات' : 'ثبت کوئری' }}
               </button>
 
               <button
-                v-if="isEditing"
+                v-if="is_editing"
                 type="button"
                 class="rounded-xl border border-white/15 bg-white/[0.04] px-6 py-3 text-sm font-bold text-gray-200 transition hover:bg-white/[0.08]"
-                @click="cancelEdit"
+                @click="cancel_edit"
               >
                 لغو ویرایش
               </button>
@@ -311,21 +317,21 @@ onMounted(load)
         <ul v-else class="divide-y divide-white/10">
           <li
             v-for="query in queries"
-            :key="query.queryId"
+            :key="query.query_id"
             class="flex flex-wrap items-center justify-between gap-3 py-4"
           >
             <div>
-              <p class="font-semibold text-gray-100">{{ query.reportTitle }}</p>
+              <p class="font-semibold text-gray-100">{{ query.report_title }}</p>
               <p class="mt-1 text-sm text-gray-400">
-                #{{ query.queryId }} · {{ query.chartType }} ·
-                {{ query.isActive ? 'فعال' : 'غیرفعال' }}
+                #{{ query.query_id }} · {{ query.chart_type }} ·
+                {{ query.is_active ? 'فعال' : 'غیرفعال' }}
               </p>
             </div>
 
             <button
               type="button"
               class="rounded-lg border border-sky-400/30 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-200 transition hover:bg-sky-500/20"
-              @click="startEdit(query)"
+              @click="start_edit(query)"
             >
               ویرایش
             </button>
