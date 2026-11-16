@@ -1,0 +1,375 @@
+<template>
+  <main dir="rtl" class="min-h-screen bg-[#17151C] text-slate-100 p-6 md:p-10 font-sans">
+    <div class="max-w-5xl mx-auto space-y-6">
+      
+      <!-- هدر صفحه -->
+      <header class="text-right">
+        <h1 class="text-2xl font-bold tracking-tight text-white">تنظیمات داشبورد</h1>
+        <p class="text-sm text-slate-400 mt-1">ساخت و مدیریت داشبوردهای سیستم</p>
+      </header>
+
+      <!-- پیام‌های سیستم -->
+      <div
+        v-if="status_message"
+        class="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300"
+      >
+        {{ status_message }}
+      </div>
+
+      <div
+        v-if="error_message"
+        class="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300"
+      >
+        {{ error_message }}
+      </div>
+
+      <!-- پنل آکاردئونی فرم درج و ویرایش داشبورد -->
+      <section class="rounded-2xl border border-white/15 bg-[#211e28]/95 shadow-xl shadow-black/25 backdrop-blur-md transition-all">
+        <!-- کلید باز و بسته شدن پنل -->
+        <button
+          type="button"
+          @click="toggle_form"
+          class="w-full flex items-center justify-between p-5 text-right cursor-pointer hover:bg-white/[0.02] rounded-2xl transition"
+        >
+          <div class="flex items-center gap-3">
+            <span
+              class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300 transition-transform duration-200"
+              :class="{ 'rotate-180': is_form_open }"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fill-rule="evenodd"
+                  d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </span>
+            <div class="text-right">
+              <h2 class="text-base font-semibold text-white">
+                {{ is_editing ? `ویرایش داشبورد #${editing_id}` : 'ثبت داشبورد جدید' }}
+              </h2>
+              <p class="text-xs text-slate-400">
+                {{ is_form_open ? 'برای بستن کلیک کنید' : 'برای باز کردن کلیک کنید' }}
+              </p>
+            </div>
+          </div>
+          <span
+            v-if="is_editing"
+            class="text-xs px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30"
+          >
+            در حال ویرایش
+          </span>
+        </button>
+
+        <!-- بدنه فرم باز شونده -->
+        <div v-show="is_form_open" class="border-t border-white/10 p-6 space-y-6">
+          <form @submit.prevent="submit_dashboard" class="space-y-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <!-- عنوان داشبورد -->
+              <div class="space-y-1.5 text-right">
+                <label class="block text-xs font-medium text-slate-300">
+                  عنوان داشبورد <span class="text-rose-400">*</span>
+                </label>
+                <input
+                  v-model.trim="form.title"
+                  type="text"
+                  required
+                  placeholder="مثلاً: داشبورد فروش و توزیع"
+                  class="form-control"
+                />
+              </div>
+
+              <!-- کد یکتای داشبورد -->
+              <div class="space-y-1.5 text-right">
+                <label class="block text-xs font-medium text-slate-300">
+                  کد داشبورد <span class="text-rose-400">*</span>
+                </label>
+                <input
+                  v-model.trim="form.dashboard_code"
+                  type="text"
+                  required
+                  placeholder="مثلاً: DASH_SALES_01"
+                  class="form-control font-mono text-left"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <!-- نوع چینش -->
+              <div class="space-y-1.5 text-right">
+                <label class="block text-xs font-medium text-slate-300">
+                  نوع چینش <span class="text-rose-400">*</span>
+                </label>
+                <select v-model="form.layout_type" required class="form-control cursor-pointer">
+                  <option value="GRID">شبکه‌ای (GRID)</option>
+                  <option value="TABS">تب‌بندی (TABS)</option>
+                  <option value="ACCORDION">آکاردئونی (ACCORDION)</option>
+                </select>
+              </div>
+
+              <!-- نام آیکون -->
+              <div class="space-y-1.5 text-right">
+                <label class="block text-xs font-medium text-slate-300">نام آیکون</label>
+                <input
+                  v-model.trim="form.icon_name"
+                  type="text"
+                  placeholder="مثلاً: chart-pie"
+                  class="form-control font-mono text-left"
+                />
+              </div>
+
+              <!-- نرخ بروزرسانی -->
+              <div class="space-y-1.5 text-right">
+                <label class="block text-xs font-medium text-slate-300">نرخ بروزرسانی (ثانیه)</label>
+                <input
+                  v-model.number="form.refresh_rate_sec"
+                  type="number"
+                  min="0"
+                  placeholder="60"
+                  class="form-control font-mono text-left"
+                />
+              </div>
+            </div>
+
+            <!-- توضیحات -->
+            <div class="space-y-1.5 text-right">
+              <label class="block text-xs font-medium text-slate-300">توضیحات</label>
+              <textarea
+                v-model.trim="form.description"
+                rows="3"
+                placeholder="توضیح کوتاهی درباره این داشبورد..."
+                class="form-control resize-y"
+              ></textarea>
+            </div>
+
+            <!-- وضعیت فعال بودن (مشابه دقیق فرم کوئری) -->
+            <div class="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3">
+              <input
+                id="is_active"
+                v-model="form.is_active"
+                type="checkbox"
+                class="h-4 w-4 rounded border-gray-600 bg-gray-800 text-emerald-500 accent-emerald-500"
+              />
+              <label for="is_active" class="cursor-pointer text-sm text-gray-200">
+                فعال باشد
+              </label>
+            </div>
+
+            <!-- دکمه‌های عملیات -->
+            <div class="flex flex-wrap items-center gap-3 pt-2">
+              <button
+                type="submit"
+                :disabled="is_submitting"
+                class="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-emerald-500 disabled:opacity-50 cursor-pointer"
+              >
+                {{ is_submitting ? 'در حال ذخیره...' : (is_editing ? 'بروزرسانی داشبورد' : 'ثبت داشبورد') }}
+              </button>
+              
+              <button
+                v-if="is_editing"
+                type="button"
+                @click="cancel_editing"
+                class="rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-gray-300 transition hover:bg-white/10 cursor-pointer"
+              >
+                انصراف
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- فهرست داشبوردهای ثبت‌شده (دقیقاً مشابه بخش کوئری‌های ثبت‌شده) -->
+      <section class="rounded-2xl border border-white/15 bg-[#211e28]/95 p-5 shadow-xl shadow-black/15 sm:p-8">
+        <h2 class="mb-4 text-lg font-bold text-white">داشبوردهای ثبت‌شده</h2>
+
+        <p v-if="is_loading" class="text-sm text-gray-300">در حال بارگذاری...</p>
+
+        <p
+          v-else-if="!dashboards.length"
+          class="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-gray-400"
+        >
+          هنوز داشبوردی ثبت نشده است.
+        </p>
+
+        <ul v-else class="divide-y divide-white/10">
+          <li
+            v-for="dash in dashboards"
+            :key="dash.dashboard_id"
+            class="flex flex-wrap items-center justify-between gap-3 py-4"
+          >
+            <div>
+              <p class="font-semibold text-gray-100">{{ dash.title }}</p>
+              <p class="mt-1 text-sm text-gray-400">
+                #{{ dash.dashboard_id }} · {{ dash.dashboard_code }} ·
+                {{ (dash.is_active !== undefined ? dash.is_active : true) ? 'فعال' : 'غیرفعال' }}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              class="rounded-lg border border-sky-400/30 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-200 transition hover:bg-sky-500/20 cursor-pointer"
+              @click="start_edit(dash)"
+            >
+              ویرایش
+            </button>
+          </li>
+        </ul>
+      </section>
+
+    </div>
+  </main>
+</template>
+
+<script setup>
+import { ref, reactive, onMounted } from 'vue'
+
+const API_BASE = 'http://127.0.0.1:8000'
+
+const dashboards = ref([])
+const is_loading = ref(false)
+const is_submitting = ref(false)
+const is_form_open = ref(true)
+const is_editing = ref(false)
+const editing_id = ref(null)
+const status_message = ref('')
+const error_message = ref('')
+
+const form = reactive({
+  dashboard_code: '',
+  title: '',
+  description: '',
+  layout_type: 'GRID',
+  icon_name: '',
+  refresh_rate_sec: 60,
+  is_active: true
+})
+
+const reset_form = () => {
+  form.dashboard_code = ''
+  form.title = ''
+  form.description = ''
+  form.layout_type = 'GRID'
+  form.icon_name = ''
+  form.refresh_rate_sec = 60
+  form.is_active = true
+  is_editing.value = false
+  editing_id.value = null
+}
+
+const toggle_form = () => {
+  is_form_open.value = !is_form_open.value
+}
+
+const cancel_editing = () => {
+  reset_form()
+  status_message.value = ''
+  error_message.value = ''
+}
+
+const load_dashboards = async () => {
+  is_loading.value = true
+  error_message.value = ''
+  try {
+    const res = await fetch(`${API_BASE}/dashboards/list`)
+    if (!res.ok) throw new Error(`کد خطای سرور: ${res.status}`)
+    dashboards.value = await res.json()
+  } catch (err) {
+    error_message.value = `خطا در دریافت فهرست داشبوردها: ${err.message}`
+  } finally {
+    is_loading.value = false
+  }
+}
+
+const start_edit = (dash) => {
+  is_editing.value = true
+  editing_id.value = dash.dashboard_id
+  form.dashboard_code = dash.dashboard_code || ''
+  form.title = dash.title || ''
+  form.description = dash.description || ''
+  form.layout_type = dash.layout_type || 'GRID'
+  form.icon_name = dash.icon_name || ''
+  form.refresh_rate_sec = dash.refresh_rate_sec || 60
+  form.is_active = dash.is_active !== undefined ? dash.is_active : true
+
+  is_form_open.value = true
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+const submit_dashboard = async () => {
+  is_submitting.value = true
+  status_message.value = ''
+  error_message.value = ''
+
+  const payload = {
+    dashboard_code: form.dashboard_code,
+    title: form.title,
+    description: form.description || null,
+    layout_type: form.layout_type,
+    icon_name: form.icon_name || null,
+    refresh_rate_sec: Number(form.refresh_rate_sec) || 60,
+    is_active: Boolean(form.is_active)
+  }
+
+  try {
+    const url = is_editing.value 
+      ? `${API_BASE}/dashboards/${editing_id.value}` 
+      : `${API_BASE}/dashboards`
+    const method = is_editing.value ? 'PUT' : 'POST'
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || `خطای سرور: ${res.status}`)
+    }
+
+    status_message.value = is_editing.value ? 'داشبورد با موفقیت ویرایش شد.' : 'داشبورد جدید با موفقیت ثبت شد.'
+    reset_form()
+    await load_dashboards()
+  } catch (err) {
+    error_message.value = err.message
+  } finally {
+    is_submitting.value = false
+  }
+}
+
+onMounted(() => {
+  load_dashboards()
+})
+</script>
+
+<style scoped>
+.form-control {
+  width: 100%;
+  border-radius: 0.75rem;
+  border-width: 1px;
+  border-color: rgba(255, 255, 255, 0.15);
+  background-color: #302c38;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: #f9fafb;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  transition-property: border-color, box-shadow;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.form-control:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 1px #60a5fa;
+}
+
+.form-control::placeholder {
+  color: #6b7280;
+}
+
+select.form-control {
+  color-scheme: dark;
+}
+</style>

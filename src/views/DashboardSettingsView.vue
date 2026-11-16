@@ -5,6 +5,10 @@ const sources = ref([])
 const queries = ref([])
 const loading = ref(false)
 const saving = ref(false)
+const deleting = ref(false)
+const delete_dialog = ref(null)
+const pending_delete = ref(null)
+const delete_error = ref('')
 const error = ref('')
 const message = ref('')
 
@@ -65,6 +69,7 @@ function toggle_form() {
 }
 
 function start_edit(query) {
+  if (saving.value || deleting.value) return
   editing_id.value = query.query_id
   form.source_id = query.source_id ?? null
   form.category_id = query.category_id ?? null
@@ -80,13 +85,69 @@ function start_edit(query) {
 }
 
 function cancel_edit() {
+  if (saving.value || deleting.value) return
   editing_id.value = null
   Object.assign(form, empty_form())
   error.value = ''
   message.value = ''
 }
 
+function open_delete_dialog(query) {
+  if (saving.value || deleting.value || !query?.query_id) return
+  pending_delete.value = { query_id: query.query_id, report_title: query.report_title }
+  delete_error.value = ''
+  delete_dialog.value.showModal()
+}
+
+function open_form_delete() {
+  const query = queries.value.find(item => item.query_id === editing_id.value)
+  if (query) open_delete_dialog(query)
+}
+
+function close_delete_dialog() {
+  if (deleting.value) return
+  delete_dialog.value.close()
+  pending_delete.value = null
+  delete_error.value = ''
+}
+
+function on_delete_backdrop(event) {
+  if (event.target === delete_dialog.value) close_delete_dialog()
+}
+
+async function confirm_delete_query() {
+  if (saving.value || deleting.value || !pending_delete.value) return
+  const query_id = pending_delete.value.query_id
+  deleting.value = true
+  delete_error.value = ''
+  error.value = ''
+  message.value = ''
+  try {
+    const response = await fetch(`/api/admin/dashboard/queries/${query_id}`, {
+      method: 'DELETE',
+      credentials: 'same-origin'
+    })
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}))
+      throw new Error(typeof body.detail === 'string' ? body.detail : `خطا در حذف کوئری: ${response.status}`)
+    }
+    queries.value = queries.value.filter(item => item.query_id !== query_id)
+    if (editing_id.value === query_id) {
+      editing_id.value = null
+      Object.assign(form, empty_form())
+    }
+    message.value = 'کوئری با موفقیت حذف شد.'
+    deleting.value = false
+    close_delete_dialog()
+  } catch (exception) {
+    delete_error.value = exception.message || 'خطا در ارتباط با سرور'
+  } finally {
+    deleting.value = false
+  }
+}
+
 async function save_query() {
+  if (saving.value || deleting.value) return
   error.value = ''
   message.value = ''
 
@@ -282,7 +343,7 @@ onMounted(load_data)
             <div class="flex flex-wrap gap-3">
               <button
                 type="submit"
-                :disabled="saving"
+                :disabled="saving || deleting"
                 class="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-300/60 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {{ saving ? 'در حال ذخیره...' : is_editing ? 'ذخیره تغییرات' : 'ثبت کوئری' }}
@@ -293,8 +354,18 @@ onMounted(load_data)
                 type="button"
                 class="rounded-xl border border-white/15 bg-white/[0.04] px-6 py-3 text-sm font-bold text-gray-200 transition hover:bg-white/[0.08]"
                 @click="cancel_edit"
+                :disabled="saving || deleting"
               >
                 لغو ویرایش
+              </button>
+              <button
+                v-if="is_editing"
+                type="button"
+                :disabled="saving || deleting"
+                @click="open_form_delete"
+                class="rounded-xl border border-rose-400/30 bg-rose-500/10 px-6 py-3 text-sm font-bold text-rose-200 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                حذف کوئری
               </button>
             </div>
           </form>
@@ -328,21 +399,106 @@ onMounted(load_data)
               </p>
             </div>
 
+            <div class="flex items-center gap-2">
             <button
               type="button"
               class="rounded-lg border border-sky-400/30 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-200 transition hover:bg-sky-500/20"
               @click="start_edit(query)"
+              :disabled="saving || deleting"
             >
               ویرایش
             </button>
+            <button
+              type="button"
+              :disabled="saving || deleting"
+              @click="open_delete_dialog(query)"
+              :aria-label="`حذف کوئری ${query.report_title}`"
+              class="rounded-lg border border-rose-400/30 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-200 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >حذف</button>
+            </div>
           </li>
         </ul>
       </section>
     </div>
+    <dialog
+      ref="delete_dialog"
+      class="delete-dialog"
+      dir="rtl"
+      aria-labelledby="delete-dialog-title"
+      aria-describedby="delete-dialog-description"
+      :aria-busy="deleting"
+      @cancel.prevent="close_delete_dialog"
+      @click="on_delete_backdrop"
+    >
+      <div class="rounded-3xl border border-white/10 bg-[#211e28] p-6 text-right text-slate-100 shadow-2xl sm:p-8">
+        <div class="mb-5 flex items-start justify-between gap-4">
+          <span class="flex h-14 w-14 items-center justify-center rounded-2xl border border-rose-400/20 bg-rose-500/10 text-rose-400">
+            <svg aria-hidden="true" class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M5 6l1 14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1l1-14M10 10v7M14 10v7" />
+            </svg>
+          </span>
+          <button type="button" aria-label="بستن" :disabled="deleting" @click="close_delete_dialog" class="modal-close rounded-lg p-2 text-slate-400 transition hover:bg-white/5 hover:text-white disabled:opacity-40">
+            <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18" /></svg>
+          </button>
+        </div>
+        <h2 id="delete-dialog-title" class="text-xl font-bold tracking-tight">حذف کوئری</h2>
+        <p id="delete-dialog-description" class="mt-3 text-sm leading-7 text-slate-400">
+          آیا از حذف کوئری زیر مطمئن هستید؟ این کوئری حذف می‌شود و امکان بازگردانی وجود ندارد.
+        </p>
+        <div class="mt-5 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+          <p class="break-words text-sm font-semibold text-slate-100">{{ pending_delete?.report_title }}</p>
+          <p class="mt-1 break-all text-xs text-slate-500">#{{ pending_delete?.query_id }}</p>
+        </div>
+        <p v-if="delete_error" role="alert" class="mt-4 rounded-xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm leading-6 text-rose-300">{{ delete_error }}</p>
+        <div class="mt-7 flex gap-3 border-t border-white/10 pt-5">
+          <button type="button" autofocus :disabled="deleting" @click="close_delete_dialog" class="modal-action flex-1 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">انصراف</button>
+          <button type="button" :disabled="deleting" @click="confirm_delete_query" class="modal-action flex flex-1 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:cursor-wait disabled:opacity-60">
+            <svg v-if="deleting" aria-hidden="true" class="h-4 w-4 animate-spin motion-reduce:animate-none" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" opacity="0.25" /><path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" stroke-width="3" stroke-linecap="round" /></svg>
+            {{ deleting ? 'در حال حذف...' : 'حذف کوئری' }}
+          </button>
+        </div>
+      </div>
+    </dialog>
   </main>
 </template>
 
 <style scoped>
+.delete-dialog {
+  width: min(28rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 1.5rem;
+  background: transparent;
+  color-scheme: dark;
+}
+
+.delete-dialog::backdrop {
+  background: rgba(9, 8, 13, 0.75);
+  backdrop-filter: blur(6px);
+}
+
+.delete-dialog[open] {
+  animation: modal-appear 180ms ease-out;
+}
+
+.modal-action:focus-visible,
+.modal-close:focus-visible {
+  outline: 2px solid #fda4af;
+  outline-offset: 3px;
+}
+
+@keyframes modal-appear {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .delete-dialog[open] { animation: none; }
+}
+
+
 .form-control {
   display: block;
   width: 100%;

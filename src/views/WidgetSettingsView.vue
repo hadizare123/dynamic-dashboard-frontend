@@ -1,41 +1,47 @@
 <template>
-  <div class="p-8 text-gray-100 max-w-5xl mx-auto" dir="rtl">
-    <div class="mb-6 flex items-center justify-between">
-      <h2 class="text-2xl font-bold text-[#4ade80]">(DB Target) ساخت ویجت جدید</h2>
+  <div class="p-6 max-w-4xl mx-auto text-white">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-bold text-emerald-400">ساخت ویجت جدید (DB Target)</h1>
+      <button 
+        @click="fetchReferenceData" 
+        class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs rounded border border-slate-600 transition"
+      >
+        بارگذاری مجدد لیست‌ها
+      </button>
     </div>
 
-    <form @submit.prevent="saveWidget" class="bg-[#1f1b24] border border-gray-800 rounded-2xl p-8 space-y-6 shadow-2xl">
-      
-      <!-- ردیف اول: انتخاب داشبورد و کوئری (جایگزین فیلد عددی) -->
+    <!-- پیام خطا یا هشدار کلی -->
+    <div v-if="fetchError" class="mb-6 p-4 bg-red-900/60 border border-red-500 rounded text-red-200 text-sm">
+      {{ fetchError }}
+    </div>
+
+    <form @submit.prevent="saveWidget" class="space-y-6 bg-slate-900/80 p-6 rounded-xl border border-slate-800 shadow-xl">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- انتخاب داشبورد -->
         <div>
-          <label class="block text-sm font-medium text-gray-400 mb-2">
-            شناسه داشبورد (Dashboard ID)
-          </label>
-          <select
-            v-model="widget.dashboard_id"
-            required
-            class="w-full bg-[#17151C] border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-[#4ade80] outline-none appearance-none cursor-pointer"
+          <label class="block text-sm font-medium text-slate-300 mb-2">انتخاب داشبورد</label>
+          <select 
+            v-model="form.dashboardId" 
+            required 
+            class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-emerald-500 focus:border-emerald-500"
           >
-            <option value="" disabled>-- انتخاب از لیست داشبوردها --</option>
-            <option v-for="db in dashboards" :key="db.dashboard_id" :value="db.dashboard_id">
-              {{ db.title }} (ID: {{ db.dashboard_id }})
+            <option :value="null" disabled>-- یک داشبورد انتخاب کنید --</option>
+            <option v-for="dash in dashboards" :key="dash.dashboard_id" :value="dash.dashboard_id">
+              {{ dash.title }} (شناسه: {{ dash.dashboard_id }})
             </option>
           </select>
         </div>
 
+        <!-- انتخاب کوئری منبع (فقط کوئری‌های فعال نمایش داده می‌شوند) -->
         <div>
-          <label class="block text-sm font-medium text-gray-400 mb-2">
-            شناسه کوئری (Query ID)
-          </label>
-          <select
-            v-model="widget.query_id"
-            required
-            class="w-full bg-[#17151C] border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-[#4ade80] outline-none appearance-none cursor-pointer"
+          <label class="block text-sm font-medium text-slate-300 mb-2">انتخاب کوئری منبع</label>
+          <select 
+            v-model="form.queryId" 
+            class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-emerald-500 focus:border-emerald-500"
           >
-            <option value="" disabled>-- انتخاب از لیست کوئری‌ها --</option>
-            <option v-for="q in queries" :key="q.query_id" :value="q.query_id">
-              {{ q.report_title }} (ID: {{ q.query_id }})
+            <option :value="null">-- یک کوئری انتخاب کنید (اختیاری) --</option>
+            <option v-for="q in activeQueries" :key="q.query_id" :value="q.query_id">
+              {{ q.report_title }} (شناسه: {{ q.query_id }})
             </option>
           </select>
         </div>
@@ -43,129 +49,154 @@
 
       <!-- عنوان ویجت -->
       <div>
-        <label class="block text-sm font-medium text-gray-400 mb-2">عنوان ویجت (Widget Title)</label>
-        <input
-          v-model="widget.widget_title"
-          type="text"
-          placeholder="Enter title..."
-          class="w-full bg-[#17151C] border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-[#4ade80] outline-none"
+        <label class="block text-sm font-medium text-slate-300 mb-2">عنوان ویجت (Widget Title)</label>
+        <input 
+          v-model="form.widgetTitle" 
+          type="text" 
+          required 
+          placeholder="مثال: نمودار فروش ماهانه" 
+          class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-emerald-500 focus:border-emerald-500"
         />
       </div>
 
-      <!-- نوع و ترتیب نمایش -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- نوع ویجت -->
         <div>
-          <label class="block text-sm font-medium text-gray-400 mb-2">نوع ویجت (Widget Type)</label>
-          <select
-            v-model="widget.widget_type"
-            class="w-full bg-[#17151C] border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-[#4ade80] outline-none"
+          <label class="block text-sm font-medium text-slate-300 mb-2">نوع ویجت (Widget Type)</label>
+          <select 
+            v-model="form.widgetType" 
+            required 
+            class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-emerald-500 focus:border-emerald-500"
           >
             <option value="TABLE">جدول (TABLE)</option>
-            <option value="KPI">کارت عددی (KPI)</option>
-            <option value="CHART_BAR">نمودار ستونی</option>
+            <option value="KPI">کارت آماری (KPI)</option>
+            <option value="CHART_BAR">نمودار ستونی (CHART_BAR)</option>
+            <option value="CHART_LINE">نمودار خطی (CHART_LINE)</option>
+            <option value="CHART_PIE">نمودار دایره‌ای (CHART_PIE)</option>
           </select>
         </div>
+
+        <!-- ترتیب نمایش -->
         <div>
-          <label class="block text-sm font-medium text-gray-400 mb-2">ترتیب نمایش (Sort Order)</label>
-          <input
-            v-model.number="widget.sort_order"
-            type="number"
-            class="w-full bg-[#17151C] border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-[#4ade80] outline-none"
+          <label class="block text-sm font-medium text-slate-300 mb-2">ترتیب نمایش (Sort Order)</label>
+          <input 
+            v-model.number="form.sortOrder" 
+            type="number" 
+            class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-emerald-500 focus:border-emerald-500"
           />
         </div>
       </div>
 
-      <!-- مختصات گرید (مطابق تصویر) -->
+      <!-- موقعیت در گرید -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div>
-          <label class="block text-xs text-gray-400 mb-2">موقعیت X</label>
-          <input v-model.number="widget.grid_pos_x" type="number" class="w-full bg-[#17151C] border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-[#4ade80]" />
+          <label class="block text-xs text-slate-400 mb-1">موقعیت X</label>
+          <input v-model.number="form.gridPosX" type="number" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white" />
         </div>
         <div>
-          <label class="block text-xs text-gray-400 mb-2">موقعیت Y</label>
-          <input v-model.number="widget.grid_pos_y" type="number" class="w-full bg-[#17151C] border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-[#4ade80]" />
+          <label class="block text-xs text-slate-400 mb-1">موقعیت Y</label>
+          <input v-model.number="form.gridPosY" type="number" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white" />
         </div>
         <div>
-          <label class="block text-xs text-gray-400 mb-2">عرض</label>
-          <input v-model.number="widget.grid_width" type="number" class="w-full bg-[#17151C] border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-[#4ade80]" />
+          <label class="block text-xs text-slate-400 mb-1">عرض (Grid Width)</label>
+          <input v-model.number="form.gridWidth" type="number" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white" />
         </div>
         <div>
-          <label class="block text-xs text-gray-400 mb-2">ارتفاع</label>
-          <input v-model.number="widget.grid_height" type="number" class="w-full bg-[#17151C] border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-[#4ade80]" />
+          <label class="block text-xs text-slate-400 mb-1">ارتفاع (Grid Height)</label>
+          <input v-model.number="form.gridHeight" type="number" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white" />
         </div>
       </div>
 
-      <!-- تنظیمات نمایشی JSON -->
+      <!-- تنظیمات JSON -->
       <div>
-        <label class="block text-sm font-medium text-gray-400 mb-2">تنظیمات نمایشی (JSON)</label>
-        <textarea
-          v-model="widget.widget_props"
-          rows="4"
-          class="w-full bg-[#17151C] border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-[#4ade80] outline-none font-mono"
+        <label class="block text-sm font-medium text-slate-300 mb-2">تنظیمات نمایشی (JSON Props)</label>
+        <textarea 
+          v-model="form.widgetProps" 
+          rows="3" 
+          dir="ltr"
+          class="w-full font-mono text-sm bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:ring-emerald-500 focus:border-emerald-500"
         ></textarea>
       </div>
 
-      <!-- چک باکس فعال بودن -->
-      <div class="flex items-center gap-3">
-        <input v-model="widget.is_visible" type="checkbox" id="is_active" class="w-5 h-5 accent-[#4ade80]" />
-        <label for="is_active" class="text-sm text-gray-300">ویجت فعال باشد</label>
+      <!-- وضعیت فعال بودن ویجت -->
+      <div class="flex items-center gap-2">
+        <input 
+          id="isVisible" 
+          v-model="form.isVisible" 
+          type="checkbox" 
+          class="w-4 h-4 rounded bg-slate-950 border-slate-700 text-emerald-500 focus:ring-emerald-500" 
+        />
+        <label for="isVisible" class="text-sm font-medium text-slate-300">ویجت فعال و نمایان باشد</label>
       </div>
 
-      <!-- دکمه ذخیره -->
-      <div class="pt-4 flex justify-end">
-        <button
-          type="submit"
-          class="bg-[#059669] hover:bg-[#10b981] text-white font-bold px-10 py-3 rounded-lg transition duration-200 shadow-lg"
-        >
-          ذخیره در دیتابیس
-        </button>
-      </div>
+      <button 
+        type="submit" 
+        class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 font-semibold rounded-lg shadow-md transition"
+      >
+        ذخیره در دیتابیس
+      </button>
     </form>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 
 const BASE_URL = 'http://127.0.0.1:8000'
 
 const dashboards = ref([])
 const queries = ref([])
+const fetchError = ref('')
 
-const widget = ref({
-  dashboard_id: '',
-  query_id: '',
-  widget_title: '',
-  widget_type: 'TABLE',
-  grid_pos_x: 0,
-  grid_pos_y: 0,
-  grid_width: 6,
-  grid_height: 4,
-  widget_props: '{}',
-  sort_order: 0,
-  is_visible: true
+// فیلتر کردن هوشمند: در فرم ساخت ویجت فقط کوئری‌های فعال را نمایش می‌دهیم
+const activeQueries = computed(() => {
+  return queries.value.filter(q => q.is_active === true || q.is_active === undefined)
 })
 
-// دریافت مستقیم داده‌ها از جداول مربوطه در دیتابیس
-const fetchReferenceData = async () => {
-  try {
-    // ۱. لیست کوئری‌ها (اندپوینت موجود در پروژه شما)
-    const qRes = await fetch(`${BASE_URL}/api/admin/dashboard/queries`)
-    if (qRes.ok) queries.value = await qRes.json()
+const form = reactive({
+  dashboardId: null,
+  queryId: null,
+  widgetTitle: '',
+  widgetType: 'TABLE',
+  gridPosX: 0,
+  gridPosY: 0,
+  gridWidth: 6,
+  gridHeight: 4,
+  widgetProps: '{}',
+  sortOrder: 0,
+  isVisible: true
+})
 
-    // ۲. لیست داشبوردها (اندپوینت دومی که باید در بک‌اند اضافه شده باشد)
+const fetchReferenceData = async () => {
+  fetchError.value = ''
+  try {
+    // ۱. دریافت کوئری‌ها (همه از سرور خوانده می‌شوند اما با computed فقط فعال‌ها در سلکتور لیست می‌شوند)
+    const qRes = await fetch(`${BASE_URL}/api/admin/dashboard/queries`)
+    if (qRes.ok) {
+      queries.value = await qRes.json()
+    } else {
+      fetchError.value = `خطا در دریافت کوئری‌ها: وضعیت ${qRes.status}`
+    }
+
+    // ۲. دریافت داشبوردها
     const dRes = await fetch(`${BASE_URL}/dashboards/list`)
-    if (dRes.ok) dashboards.value = await dRes.json()
-  } catch (error) {
-    console.error('Error fetching DB records:', error)
+    if (dRes.ok) {
+      dashboards.value = await dRes.json()
+    } else {
+      fetchError.value = (fetchError.value ? fetchError.value + ' | ' : '') + `خطا در دریافت داشبوردها: وضعیت ${dRes.status}`
+    }
+  } catch (err) {
+    console.error('Error fetching records:', err)
+    fetchError.value = err.message || 'خطا در ارتباط با سرور'
   }
 }
 
-const saveWidget = async () => {
-  console.log('ارسال رکورد نهایی به جدول sys_dashboard_widgets:', widget.value)
-  // اینجا درخواست POST رو به بک‌اندر ارسال کن
-  alert('آماده برای ثبت در دیتابیس! خروجی در کنسول را ببین هادی جان.')
+const saveWidget = () => {
+  console.log('Widget Form Submitted:', form)
+  alert('ویجت آماده ذخیره است (اطلاعات در کنسول لاگ شد)')
 }
 
-onMounted(fetchReferenceData)
+onMounted(() => {
+  fetchReferenceData()
+})
 </script>
