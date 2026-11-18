@@ -3,16 +3,39 @@
 @tailwind utilities;
 
 /* ==========================================================================
+   فونت وزیرمتن (آفلاین)
+   ========================================================================== */
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('./assets/fonts/Vazirmatn-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('./assets/fonts/Vazirmatn-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+
+/* ==========================================================================
    ۱. استایل‌های پایه بدنه و اسکرول‌بار (Dark Shell)
    ========================================================================== */
 :root {
   color-scheme: dark;
 }
 
+
 html {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-family: 'Vazirmatn', system-ui, -apple-system, sans-serif;
   scroll-behavior: smooth;
+  direction: rtl;
 }
+
 
 body {
   background-color: #17151C;
@@ -22,7 +45,9 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+   font-family: 'Vazirmatn', Tahoma, sans-serif;
 }
+
 
 /* اسکرول‌بار اختصاصی و شیک مطابق با تم دارک */
 ::-webkit-scrollbar {
@@ -30,9 +55,11 @@ body {
   height: 8px;
 }
 
+
 ::-webkit-scrollbar-track {
   background: #17151C;
 }
+
 
 ::-webkit-scrollbar-thumb {
   background: #2D2838;
@@ -40,9 +67,11 @@ body {
   border: 2px solid #17151C;
 }
 
+
 ::-webkit-scrollbar-thumb:hover {
   background: #433C53;
 }
+
 
 /* ==========================================================================
    ۲. پوسته اصلی داشبورد و جلوه‌های پس‌زمینه (Dashboard Shell)
@@ -52,6 +81,7 @@ body {
   isolation: isolate;
   background-color: #17151C;
 }
+
 
 /* ==========================================================================
    ۳. هدر شیشه‌ای اختصاصی (بدون هیچ ترنسفرم تا متن کریستالی و شارپ بماند)
@@ -80,6 +110,7 @@ body {
   transform: none !important;
 }
 
+
 /* خط نور ملایم بالای هدر */
 .glass-header::before {
   content: "";
@@ -96,6 +127,7 @@ body {
   );
   pointer-events: none;
 }
+
 
 /* ==========================================================================
    ۴. پنل‌های شیشه‌ای عمومی و کارت‌های بدون هاور (Glass Panel)
@@ -119,6 +151,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+
 .glass-panel::before {
   content: "";
   position: absolute;
@@ -134,6 +167,7 @@ body {
   );
   pointer-events: none;
 }
+
 
 /* ==========================================================================
    ۵. کارت‌های گرید تعاملی ۳ بعدی (ویجت‌های KPI، چارت‌ها و جداول)
@@ -160,6 +194,7 @@ body {
   will-change: transform;
 }
 
+
 /* افکت جهش سه‌بعدی نرم فقط برای کارت‌ها */
 .glass-card:hover {
   transform: perspective(1000px) translateY(-5px) scale(1.006);
@@ -169,6 +204,7 @@ body {
     0 20px 40px -10px rgba(0, 0, 0, 0.55),
     0 0 25px rgba(139, 92, 246, 0.15);
 }
+
 
 .glass-card::before {
   content: "";
@@ -185,6 +221,7 @@ body {
   );
   pointer-events: none;
 }
+
 
 /* ==========================================================================
    ۶. سازگاری برای مرورگرهای قدیمی فاقد Backdrop-filter
