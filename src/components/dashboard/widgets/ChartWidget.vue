@@ -20,6 +20,7 @@ import {
   Chart,
   CategoryScale,
   LinearScale,
+  LineController, LineElement, PointElement,
   BarElement,
   BarController,
   Title,
@@ -32,6 +33,7 @@ import {
 
 // ثبت ماژول‌های لازم Chart.js
 Chart.register(
+  LineController, LineElement, PointElement,
   CategoryScale,
   LinearScale,
   BarElement,
@@ -53,43 +55,39 @@ const chartCanvas = ref(null)
 let chartInstance = null
 
 const title = computed(() => props.widget.widgetTitle || 'نمودار آماری')
+const settings = computed(() => {
+  const raw = props.widget.widgetProps
+  if (typeof raw !== 'string') return raw ?? {}
+  try { return JSON.parse(raw) ?? {} } catch { return {} }
+})
 
 // استخراج نوع نمودار از widgetProps یا widgetType
 const chartType = computed(() => {
-  try {
-    const propsJson = JSON.parse(props.widget.widgetProps || '{}')
-    if (propsJson.chartType) return propsJson.chartType
-  } catch (e) {}
+  if (settings.value.chartType) return settings.value.chartType
 
   if (props.widget.widgetType === 'CHART_PIE') return 'doughnut'
+  if (props.widget.widgetType === 'CHART_LINE') return 'line'
   return 'bar'
 })
 
 const chartTypeLabel = computed(() => {
-  return chartType.value === 'doughnut' ? 'نمودار دایره‌ای' : 'نمودار ستونی'
+  return chartType.value === 'doughnut' ? 'نمودار دایره‌ای' : chartType.value === 'line' ? 'نمودار خطی' : 'نمودار ستونی'
 })
 
 onMounted(() => {
   if (!chartCanvas.value || !props.data.length) return
 
   // پارس کردن تنظیمات ویجت برای تشخیص محورها
-  let xField = 'product_category'
-  let yField = 'total_orders'
-  try {
-    const p = JSON.parse(props.widget.widgetProps || '{}')
-    if (p.x) xField = p.x
-    if (p.y) yField = p.y
-    if (p.data) yField = p.data
-    if (p.labels) xField = p.labels
-  } catch (e) {}
+  const xField = settings.value.labels ?? settings.value.x ?? 'product_category'
+  const yField = settings.value.data ?? settings.value.y ?? 'total_orders'
 
-  const labels = props.data.map(item => item[xField] || 'نامشخص')
-  const values = props.data.map(item => Number(item[yField] || 0))
+  const labels = props.data.map(item => item[xField] ?? 'نامشخص')
+  const values = props.data.map(item => item[yField] == null ? null : Number(item[yField]))
 
   const isDoughnut = chartType.value === 'doughnut'
 
   const config = {
-    type: isDoughnut ? 'doughnut' : 'bar',
+    type: isDoughnut ? 'doughnut' : chartType.value === 'line' ? 'line' : 'bar',
     data: {
       labels: labels,
       datasets: [

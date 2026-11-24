@@ -1,5 +1,6 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { kpiColor } from '../components/dashboard/widgets/kpiColor.js'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 
 const API = '/api/admin/dashboard/widgets'
 const dashboards = ref([])
@@ -26,9 +27,49 @@ const grid_fields = [
 const empty_form = () => ({
   dashboardId: null, queryId: null, widgetTitle: '', widgetType: 'TABLE',
   gridPosX: 0, gridPosY: 0, gridWidth: 6, gridHeight: 4,
-  widgetProps: '{}', sortOrder: 0, isVisible: true
+  widgetProps: {}, sortOrder: 0, isVisible: true
 })
 const form = reactive(empty_form())
+const presentation = reactive({})
+function loadPresentation(settings = {}) {
+  const display = String(settings.display ?? '')
+  const match = display.match(/^\s*(SUM|AVG|MIN|MAX|COUNT)\s*\((.*?)\)\s*$/i)
+  Object.assign(presentation, {
+    label: settings.labels ?? settings.x ?? '', value: settings.data ?? settings.y ?? '',
+    operation: match?.[1].toUpperCase() ?? 'SUM', column: match ? (match[2].trim() === '*' ? '' : match[2].trim()) : display,
+    unit: settings.unit ?? 'تومان', color: kpiColor(settings.color)
+  })
+}
+loadPresentation()
+const isGrid = computed(() => ['TABLE', 'GRID', 'DATAGRID', 'DATA_GRID'].includes(form.widgetType))
+const columnRows = ref([])
+const columnsLoading = ref(false)
+const columnsError = ref('')
+const retryColumns = ref(0)
+watch([() => form.queryId, isGrid, editing_id, retryColumns], async ([id, grid, widgetId], _, onCleanup) => {
+  const controller = new AbortController()
+  onCleanup(() => controller.abort())
+  columnRows.value = []
+  columnsError.value = ''
+  columnsLoading.value = Boolean(id)
+  if (!id) return
+  const widget = widgets.value.find(item => item.widgetId === widgetId && item.queryId === id)
+  const titles = widget?.columnTitles ?? {}
+  try {
+    const keys = await check_response(await fetch('/api/admin/dashboard/queries/' + id + '/columns', { signal: controller.signal }))
+    if (controller.signal.aborted) return
+    for (const field of ['label', 'value', 'column']) {
+      if (!keys.includes(presentation[field])) presentation[field] = ''
+    }
+    columnRows.value = keys.map(key => ({
+      key, title: Object.hasOwn(titles, key) ? titles[key] : key
+    }))
+  } catch (exception) {
+    if (!controller.signal.aborted) columnsError.value = exception.message
+  } finally {
+    if (!controller.signal.aborted) columnsLoading.value = false
+  }
+})
 
 async function check_response(response) {
   const text = await response.text()
@@ -64,13 +105,15 @@ function toggle_form() { is_form_open.value = !is_form_open.value }
 function reset_form() {
   editing_id.value = null
   Object.assign(form, empty_form())
+  loadPresentation()
 }
 function start_edit(widget) {
   if (loading.value || saving.value || deleting.value) return
   editing_id.value = widget.widgetId
   const defaults = empty_form()
   for (const key of Object.keys(defaults)) form[key] = widget[key] ?? defaults[key]
-  form.widgetProps = typeof widget.widgetProps === 'string' ? widget.widgetProps : JSON.stringify(widget.widgetProps ?? {}, null, 2)
+  form.widgetProps = typeof widget.widgetProps === 'string' ? JSON.parse(widget.widgetProps || '{}') : { ...widget.widgetProps }
+  loadPresentation(form.widgetProps)
   error.value = ''
   message.value = ''
   is_form_open.value = true
@@ -83,16 +126,23 @@ function cancel_edit() {
 }
 
 async function save_widget() {
+  if (columnsLoading.value || columnsError.value) return
   if (loading.value || saving.value || deleting.value) return
   error.value = ''
   message.value = ''
-  let props
-  try {
-    props = JSON.parse(form.widgetProps)
-    if (!props || Array.isArray(props) || typeof props !== 'object') throw new Error()
-  } catch {
-    error.value = 'تنظیمات نمایشی باید یک شیء JSON معتبر باشد.'
-    return
+  const props = { ...form.widgetProps }
+  if (form.widgetType.startsWith('CHART')) {
+    if (![presentation.label, presentation.value].every(key => columnRows.value.some(column => column.key === key))) {
+      error.value = 'ستون برچسب و ستون مقدار نمودار را انتخاب کنید.'
+      return
+    }
+    delete props.labels
+    delete props.data
+    Object.assign(props, { x: presentation.label, y: presentation.value,
+      chartType: { CHART_PIE: 'doughnut', CHART_LINE: 'line', CHART_BAR: 'bar' }[form.widgetType] })
+  } else if (form.widgetType === 'KPI') {
+    Object.assign(props, { unit: presentation.unit, color: presentation.color,
+      display: presentation.operation + '(' + (presentation.column || '*') + ')' })
   }
   if (!form.widgetTitle.trim() || !form.dashboardId || !form.queryId) {
     error.value = 'عنوان ویجت، داشبورد و کوئری منبع را وارد کنید.'
@@ -108,7 +158,8 @@ async function save_widget() {
     await check_response(await fetch(is_update ? API + '/' + editing_id.value : API, {
       method: is_update ? 'PUT' : 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, widgetTitle: form.widgetTitle.trim(), widgetProps: props })
+      body: JSON.stringify({ ...form, widgetTitle: form.widgetTitle.trim(), widgetProps: props,
+        columnTitles: isGrid.value ? Object.fromEntries(columnRows.value.map(({ key, title }) => [key, title.trim() || key])) : {} })
     }))
     reset_form()
     message.value = is_update ? 'ویجت با موفقیت ویرایش شد.' : 'ویجت با موفقیت ثبت شد.'
@@ -255,16 +306,45 @@ onMounted(load_data)
                 <input v-model.number="form.sortOrder" type="number" required step="1" class="form-control" />
               </label>
             </div>
+            <fieldset v-if="form.queryId" class="space-y-3">
+              <legend>{{ isGrid ? 'عنوان ستون‌های جدول' : 'تنظیمات نمایشی' }}</legend>
+              <p v-if="columnsLoading">در حال خواندن ستون‌ها…</p>
+              <p v-else-if="columnsError" role="alert">{{ columnsError }}
+                <button type="button" @click="retryColumns++">تلاش دوباره</button>
+              </p>
+              <template v-if="isGrid"><label v-for="column in columnRows" :key="column.key" class="flex items-center gap-3">
+                <span dir="auto">{{ column.key }}</span>
+                <input v-model="column.title" class="form-control" :placeholder="column.key" />
+              </label></template>
+              <template v-else-if="form.widgetType.startsWith('CHART')">
+                <label v-for="field in ['label', 'value']" :key="field" class="block">
+                  {{ field === 'label' ? 'برچسب هر دسته' : 'مقدار عددی هر دسته' }}
+                  <select v-model="presentation[field]" class="form-control" required>
+                    <option disabled value="">انتخاب ستون…</option>
+                    <option v-for="column in columnRows" :key="column.key" :value="column.key">{{ column.title }}</option>
+                  </select>
+                </label>
+              </template>
+              <template v-else-if="form.widgetType === 'KPI'">
+                <label class="block">روش محاسبه<select v-model="presentation.operation" class="form-control">
+                  <option v-for="(label, key) in { SUM:'مجموع', AVG:'میانگین', MIN:'کمترین', MAX:'بیشترین', COUNT:'تعداد' }" :key="key" :value="key">{{ label }}</option>
+                </select></label>
+                <label class="block">ستون محاسبه<select v-model="presentation.column" class="form-control">
+                  <option value="">{{ presentation.operation === 'COUNT' ? 'همهٔ ردیف‌ها' : 'اولین ستون عددی' }}</option>
+                  <option v-for="column in columnRows" :key="column.key" :value="column.key">{{ column.title }}</option>
+                </select></label>
+                <label class="block">واحد نمایش<input v-model="presentation.unit" class="form-control" placeholder="مثلاً تومان یا نفر" /></label>
+                <label class="flex items-center gap-3">رنگ کارت
+                  <input v-model="presentation.color" type="color" class="h-10 w-16 cursor-pointer rounded" />
+                </label>
+              </template>
+            </fieldset>
             <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
               <label v-for="field in grid_fields" :key="field.key" class="block space-y-2">
                 <span class="block text-sm font-semibold text-gray-100">{{ field.label }}</span>
                 <input v-model.number="form[field.key]" type="number" required step="1" :min="field.min" :max="field.max" class="form-control" />
               </label>
             </div>
-            <label class="block space-y-2">
-              <span class="block text-sm font-semibold text-gray-100">تنظیمات نمایشی (JSON)</span>
-              <textarea v-model="form.widgetProps" rows="4" dir="ltr" class="form-control resize-y text-left font-mono" />
-            </label>
             <label class="flex w-fit cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-medium text-gray-100 transition hover:bg-white/[0.07]">
               <input v-model="form.isVisible" type="checkbox" class="h-4 w-4 accent-emerald-500" />
               ویجت فعال و نمایان باشد

@@ -1,4 +1,5 @@
 <script setup>
+import { kpiColor } from './kpiColor.js'
 import { computed } from 'vue'
 
 const props = defineProps({
@@ -144,23 +145,7 @@ const displayState = computed(() => {
 })
 
 const unit = computed(() => widgetProps.value.unit ?? 'تومان')
-const accent = computed(() => widgetProps.value.color ?? 'emerald')
-
-const accentClasses = computed(() => {
-  const colors = {
-    emerald: 'text-emerald-400 from-emerald-500/20 to-emerald-500/0',
-    sky: 'text-sky-400 from-sky-500/20 to-sky-500/0',
-    violet: 'text-violet-400 from-violet-500/20 to-violet-500/0',
-    amber: 'text-amber-400 from-amber-500/20 to-amber-500/0',
-    rose: 'text-rose-400 from-rose-500/20 to-rose-500/0',
-  }
-
-  return colors[accent.value] ?? colors.emerald
-})
-
-const accentTextClass = computed(() => {
-  return accentClasses.value.split(' ')[0]
-})
+const accent = computed(() => kpiColor(widgetProps.value.color))
 </script>
 
 <template>
@@ -170,7 +155,7 @@ const accentTextClass = computed(() => {
     <!-- هالهٔ رنگی پس‌زمینه -->
     <div
       class="pointer-events-none absolute -left-12 -top-12 h-40 w-40 rounded-full bg-gradient-to-br blur-2xl"
-      :class="accentClasses"
+      :style="{ backgroundImage: 'linear-gradient(to bottom right, ' + accent + '33, transparent)' }"
     ></div>
 
     <!-- عنوان کارت -->
@@ -190,7 +175,7 @@ const accentTextClass = computed(() => {
         <div class="flex w-full items-baseline justify-center gap-1.5 text-center">
           <span
             class="text-3xl font-bold tracking-tight"
-            :class="accentTextClass"
+            :style="{ color: accent }"
           >
             {{ formattedValue }}
           </span>

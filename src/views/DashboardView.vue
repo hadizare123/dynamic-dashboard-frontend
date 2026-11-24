@@ -325,7 +325,7 @@ onBeforeUnmount(() => {
                   <span class="text-gray-500">
                     تعداد ویجت‌ها:
                     <strong class="text-gray-300">
-                      {{ widgetList.length }}
+                      {{ widgetList.filter(item => item.widget.isVisible !== false).length }}
                     </strong>
                   </span>
                 </div>
