@@ -22,7 +22,6 @@ const empty_form = () => ({
   report_title: '',
   description: '',
   sql_text: '',
-  chart_type: 'TABLE',
   is_active: true
 })
 
@@ -76,7 +75,6 @@ function start_edit(query) {
   form.report_title = query.report_title ?? ''
   form.description = query.description ?? ''
   form.sql_text = query.sql_text ?? ''
-  form.chart_type = query.chart_type ?? 'TABLE'
   form.is_active = query.is_active ?? true
 
   error.value = ''
@@ -184,7 +182,6 @@ async function save_query() {
         report_title: form.report_title,
         description: form.description,
         sql_text: form.sql_text,
-        chart_type: form.chart_type,
         is_active: form.is_active
       })
     })
@@ -299,18 +296,6 @@ onMounted(load_data)
             </label>
 
             <label class="block space-y-2">
-              <span class="block text-sm font-semibold text-gray-100">
-                نوع نمایش <span class="text-rose-400">*</span>
-              </span>
-              <select v-model="form.chart_type" class="form-control">
-                <option value="TABLE">جدول</option>
-                <option value="CHART_BAR">نمودار میله‌ای</option>
-                <option value="CHART_LINE">نمودار خطی</option>
-                <option value="CHART_PIE">نمودار دایره‌ای</option>
-              </select>
-            </label>
-
-            <label class="block space-y-2">
               <span class="block text-sm font-semibold text-gray-100">توضیحات</span>
               <textarea
                 v-model="form.description"
@@ -394,8 +379,7 @@ onMounted(load_data)
             <div>
               <p class="font-semibold text-gray-100">{{ query.report_title }}</p>
               <p class="mt-1 text-sm text-gray-400">
-                #{{ query.query_id }} · {{ query.chart_type }} ·
-                {{ query.is_active ? 'فعال' : 'غیرفعال' }}
+                #{{ query.query_id }} · {{ query.is_active ? 'فعال' : 'غیرفعال' }}
               </p>
             </div>
 
@@ -420,6 +404,7 @@ onMounted(load_data)
         </ul>
       </section>
     </div>
+    
     <dialog
       ref="delete_dialog"
       class="delete-dialog"
@@ -497,7 +482,6 @@ onMounted(load_data)
 @media (prefers-reduced-motion: reduce) {
   .delete-dialog[open] { animation: none; }
 }
-
 
 .form-control {
   display: block;

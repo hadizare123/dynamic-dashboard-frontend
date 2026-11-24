@@ -94,7 +94,7 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
               <!-- نوع چینش -->
               <div class="space-y-1.5 text-right">
                 <label class="block text-xs font-medium text-slate-300">
@@ -107,16 +107,7 @@
                 </select>
               </div>
 
-              <!-- نام آیکون -->
-              <div class="space-y-1.5 text-right">
-                <label class="block text-xs font-medium text-slate-300">نام آیکون</label>
-                <input
-                  v-model.trim="form.icon_name"
-                  type="text"
-                  placeholder="مثلاً: chart-pie"
-                  class="form-control font-mono text-left"
-                />
-              </div>
+         
 
               <!-- نرخ بروزرسانی -->
               <div class="space-y-1.5 text-right">
