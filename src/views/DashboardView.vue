@@ -398,7 +398,7 @@ onBeforeUnmount(() => {
 
         <!-- ویجت‌ها -->
         <section v-if="widgetList.length">
-          <DashboardGrid :widgets="widgetList" />
+          <DashboardGrid :widgets="widgetList" :advanced="dashboardMeta?.layoutType === 'ADVANCED'" />
         </section>
 
         <!-- حالت بدون ویجت -->

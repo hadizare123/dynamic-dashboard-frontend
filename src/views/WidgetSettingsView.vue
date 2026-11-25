@@ -144,8 +144,8 @@ async function save_widget() {
     Object.assign(props, { unit: presentation.unit, color: presentation.color,
       display: presentation.operation + '(' + (presentation.column || '*') + ')' })
   }
-  if (!form.widgetTitle.trim() || !form.dashboardId || !form.queryId) {
-    error.value = 'عنوان ویجت، داشبورد و کوئری منبع را وارد کنید.'
+  if (!form.widgetTitle.trim() || !form.queryId) {
+    error.value = 'عنوان ویجت و کوئری منبع را وارد کنید.'
     return
   }
   if (grid_fields.some(field => !Number.isInteger(form[field.key]) || form[field.key] < field.min || (field.max !== undefined && form[field.key] > field.max)) || !Number.isInteger(form.sortOrder) || form.gridPosX + form.gridWidth > 12) {
@@ -278,9 +278,9 @@ onMounted(load_data)
             </label>
             <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
               <label class="block space-y-2">
-                <span class="block text-sm font-semibold text-gray-100">داشبورد <span class="text-rose-400">*</span></span>
-                <select v-model="form.dashboardId" required class="form-control">
-                  <option :value="null" disabled>انتخاب داشبورد...</option>
+                <span class="block text-sm font-semibold text-gray-100">داشبورد (اختیاری)</span>
+                <select v-model="form.dashboardId" class="form-control">
+                  <option :value="null">بدون داشبورد</option>
                   <option v-for="dashboard in dashboards" :key="dashboard.dashboard_id" :value="dashboard.dashboard_id">{{ dashboard.title }}</option>
                 </select>
               </label>

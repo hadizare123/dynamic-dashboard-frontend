@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-[#292531] border border-gray-800 rounded-2xl p-6 shadow-xl flex flex-col h-full" dir="rtl">
+  <div class="bg-[#292531] border border-gray-800 rounded-2xl shadow-xl flex flex-col h-full" :class="chartType === 'doughnut' ? 'p-4' : 'p-6'" dir="rtl">
     <div class="flex justify-between items-center mb-4">
       <h3 class="text-base font-bold text-white">{{ title }}</h3>
       <span class="text-xs text-blue-400 font-mono bg-blue-500/10 px-2.5 py-1 rounded-full border border-blue-500/20">
@@ -8,7 +8,7 @@
     </div>
 
     <!-- کانتینر نمودار -->
-    <div class="relative flex-grow w-full h-64">
+    <div class="relative min-h-0 min-w-0 flex-1 w-full">
       <canvas ref="chartCanvas"></canvas>
     </div>
   </div>
@@ -85,8 +85,27 @@ onMounted(() => {
   const values = props.data.map(item => item[yField] == null ? null : Number(item[yField]))
 
   const isDoughnut = chartType.value === 'doughnut'
+  const sliceOffset = 24
+  const sliceClearance = sliceOffset + 8
 
   const config = {
+    plugins: [{
+      id: 'chartDepth',
+      beforeDatasetDraw(chart, { meta }) {
+        const context = chart.ctx
+        const depth = Math.min(8, Math.max(3, Math.round(chart.chartArea.height / 26)))
+        for (let layer = depth; layer > 0; layer--) {
+          context.save()
+          context.translate(-layer * 0.65, layer)
+          context.filter = 'brightness(' + (0.32 + 0.38 * (1 - layer / depth)) + ')'
+          if (meta.dataset) meta.dataset.draw(context, chart.chartArea)
+          for (const element of meta.data) {
+            if (!element.hidden && !element.skip) element.draw(context, chart.chartArea)
+          }
+          context.restore()
+        }
+      }
+    }],
     type: isDoughnut ? 'doughnut' : chartType.value === 'line' ? 'line' : 'bar',
     data: {
       labels: labels,
@@ -101,19 +120,18 @@ onMounted(() => {
             'rgba(139, 92, 246, 0.8)',
             'rgba(236, 72, 153, 0.8)'
           ],
-          borderColor: [
-            'rgba(59, 130, 246, 1)',
-            'rgba(16, 185, 129, 1)',
-            'rgba(245, 158, 11, 1)',
-            'rgba(139, 92, 246, 1)',
-            'rgba(236, 72, 153, 1)'
-          ],
-          borderWidth: 1,
-          borderRadius: isDoughnut ? 0 : 6
+          borderColor: chartType.value === 'line' ? '#93c5fd' : 'rgba(255,255,255,0.65)',
+          borderWidth: chartType.value === 'line' ? 4 : 2,
+          pointRadius: 5,
+          pointBorderColor: '#dbeafe',
+          clip: isDoughnut ? sliceClearance : { left: 11, bottom: 15, right: 5, top: 5 },
+          borderRadius: isDoughnut ? 0 : 6,
+          ...(isDoughnut ? { hoverOffset: sliceOffset } : {})
         }
       ]
     },
     options: {
+      layout: { padding: isDoughnut ? sliceClearance : { left: 12, bottom: 16 } },
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
@@ -121,6 +139,7 @@ onMounted(() => {
           display: isDoughnut,
           position: 'bottom',
           labels: {
+            padding: 16,
             color: '#9CA3AF',
             font: { family: 'Tahoma', size: 12 }
           }
@@ -137,7 +156,7 @@ onMounted(() => {
       scales: isDoughnut ? {} : {
         x: {
           grid: { display: false, color: '#374151' },
-          ticks: { color: '#9CA3AF', font: { family: 'Tahoma', size: 11 } }
+          ticks: { padding: 10, color: '#9CA3AF', font: { family: 'Tahoma', size: 11 } }
         },
         y: {
           grid: { color: 'rgba(55, 65, 81, 0.4)' },

@@ -2,13 +2,14 @@
   <div
     v-if="widgets.length"
     class="dashboard-grid-surface grid grid-cols-12 gap-6 items-start"
+    :style="advanced ? { gridAutoRows: '80px', gap: '0', direction: 'ltr' } : undefined"
   >
     <div
       v-for="item in widgets"
       :key="item.widget.widgetId"
       class="col-span-12 min-w-0"
       :class="getColSpanClass(item.widget.gridWidth)"
-      :style="getWidgetContainerStyle(item.widget.gridHeight)"
+      :style="advanced ? {gridColumn: (item.widget.gridPosX + 1) + ' / span ' + item.widget.gridWidth, gridRow: (item.widget.gridPosY + 1) + ' / span ' + item.widget.gridHeight, height: '100%', padding: '4px', direction: 'rtl'} : getWidgetContainerStyle(item.widget.gridHeight)"
     >
       <component
         v-if="item.widget.isVisible !== false"
@@ -36,6 +37,7 @@ import DataGridWidget from './widgets/DataGridWidget.vue'
 import ChartWidget from './widgets/ChartWidget.vue'
 
 defineProps({
+  advanced: Boolean,
   widgets: {
     type: Array,
     default: () => []

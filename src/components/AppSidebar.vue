@@ -128,6 +128,12 @@
             
           </div>
         </div>
+        <router-link to="/admin/dashboard-design" title="طراحی پیشرفته" aria-label="طراحی پیشرفته"
+          class="flex items-center gap-3 rounded-xl py-3 transition"
+          :class="[isCollapsed ? 'justify-center' : 'px-4', isActive('/admin/dashboard-design') ? 'bg-blue-600/20 text-blue-400' : 'text-gray-300 hover:bg-gray-800/70']">
+          <span aria-hidden="true">▦</span>
+          <span v-if="!isCollapsed" class="whitespace-nowrap">طراحی پیشرفته</span>
+        </router-link>
       </nav>
     </div>
 
@@ -183,7 +189,7 @@ watch(() => dashboardsOpen.value && !isCollapsed.value, visible => {
 }, { immediate: true })
 
 const isActive = (path) => route.path === path
-const isSettingsActive = computed(() => route.path === '/dashboard/settings' || route.path === '/admin/widget-settings')
+const isSettingsActive = computed(() => ['/dashboard/settings', '/admin/widget-settings'].includes(route.path))
 
 const toggleSettings = () => {
   if (isCollapsed.value) {

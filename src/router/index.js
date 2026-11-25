@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import MainView from '../views/MainView.vue'
 
 const routes = [
+  { path: '/admin/dashboard-design', component: () => import('../views/DashboardDesign.vue'), meta: { requiresAuth: true } },
   {
     path: '/',
     redirect: '/main'
